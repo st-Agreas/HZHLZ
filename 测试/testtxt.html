@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 认知进化测试 - Evolution Level</title>
+    <style>
+        :root {
+            --bg-gradient: linear-gradient(135deg, #1a1c22 0%, #0f1013 100%);
+            --card-bg: #1e2127;
+            --accent-color: #8b5cf6; /* 霓虹紫 */
+            --text-main: #e2e8f0;
+            --text-sub: #94a3b8;
+            /* 霓虹描边：深灰背景 + 3% 不透明度的紫色微光 */
+            --neon-stroke: rgba(139, 92, 246, 0.03); 
+        }
+
+        body {
+            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background: var(--bg-gradient);
+            color: var(--text-main);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        #app {
+            width: 90%;
+            max-width: 500px;
+            background: var(--card-bg);
+            padding: 2.5rem;
+            border-radius: 24px;
+            /* 核心视觉：微弱霓虹描边 */
+            border: 1px solid var(--neon-stroke);
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5), 0 0 15px var(--neon-stroke);
+            position: relative;
+            transition: all 0.5s ease;
+        }
+
+        /* 动效：淡入淡出 */
+        .fade-in { animation: fadeIn 0.4s ease-out forwards; }
+        .fade-out { animation: fadeOut 0.3s ease-in forwards; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes fadeOut {
+            from { opacity: 1; transform: translateY(0); }
+            to { opacity: 0; transform: translateY(-10px); }
+        }
+
+        .progress-bar-wrap {
+            width: 100%;
+            height: 4px;
+            background: #334155;
+            border-radius: 2px;
+            margin-bottom: 2rem;
+        }
+
+        #progress-fill {
+            height: 100%;
+            background: var(--accent-color);
+            box-shadow: 0 0 10px var(--accent-color);
+            width: 0%;
+            transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .option-btn {
+            width: 100%;
+            padding: 1.1rem;
+            margin: 0.6rem 0;
+            background: #2d333b;
+            border: 1px solid transparent;
+            border-radius: 12px;
+            color: #cbd5e1;
+            text-align: left;
+            cursor: pointer;
+            transition: 0.2s;
+            font-size: 0.95rem;
+        }
+
+        .option-btn:hover {
+            background: #374151;
+            border-color: var(--accent-color);
+            color: white;
+        }
+
+        /* 结果页样式 */
+        .result-container { text-align: center; }
+        .lv-badge { 
+            font-size: 4.5rem; 
+            font-weight: 900; 
+            background: linear-gradient(to bottom, #fff, var(--accent-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin: 0.5rem 0;
+        }
+        .bot-img {
+            width: 220px;
+            height: 220px;
+            margin: 1rem auto;
+            border-radius: 20px;
+            display: block;
+            object-fit: cover;
+            border: 1px solid var(--neon-stroke);
+        }
+        .lv-desc {
+            font-size: 0.95rem;
+            line-height: 1.7;
+            color: var(--text-sub);
+            text-align: justify;
+            margin: 1.5rem 0;
+            padding: 1rem;
+            background: rgba(0,0,0,0.2);
+            border-radius: 12px;
+        }
+
+        .btn-primary {
+            width: 100%;
+            padding: 1rem;
+            background: var(--accent-color);
+            border: none;
+            border-radius: 10px;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        canvas { display: none; }
+    </style>
+</head>
+<body>
+
+<div id="app">
+    <div id="game-mount"></div>
+</div>
+
+<canvas id="shareCanvas" width="600" height="1000"></canvas>
+
+<script>
+    const questions = [
+        // Part A: 1-10
+        { q: "下列哪一项最接近“操作系统”的核心作用？", a: "B", o: ["提供应用商店", "管理硬件资源并为应用提供抽象接口", "提供图形界面", "运行 AI 模型", "连接互联网"] },
+        { q: "以下哪种数据最适合用关系型数据库存储？", a: "C", o: ["聊天记录全文", "图片像素", "用户订单与金额", "语音流", "视频帧"] },
+        { q: "编程语言与自然语言的本质差异是？", a: "B", o: ["编程语言更复杂", "编程语言没有歧义", "编程语言只能给机器看", "自然语言不需要规则", "没有本质差异"] },
+        { q: "以下哪项不属于计算机“硬件”？", a: "D", o: ["CPU", "GPU", "内存", "Linux", "硬盘"] },
+        { q: "Git 的主要用途是？", a: "C", o: ["自动写代码", "管理服务器", "版本控制与协作", "运行模型", "编译程序"] },
+        { q: "“云计算”最核心的价值是？", a: "C", o: ["更快的网速", "更炫的界面", "按需使用计算资源", "免费", "更安全"] },
+        { q: "下列哪个更接近“算法”的定义？", a: "C", o: ["一段代码", "一个模型", "解决问题的步骤和规则", "一个函数", "一个软件"] },
+        { q: "CPU 与 GPU 的主要区别在于？", a: "C", o: ["是否能计算", "是否耗电", "并行能力与计算模式", "是否用于 AI", "是否是硬件"] },
+        { q: "AI 模型“推理（Inference）”指的是？", a: "C", o: ["训练模型", "更新参数", "使用模型做预测", "清洗数据", "写 Prompt"] },
+        { q: "下列哪个不是常见操作系统？", a: "E", o: ["Windows", "Linux", "macOS", "Android", "MySQL"] },
+        // Part B: 11-25
+        { q: "训练一个监督学习模型，最关键的前提是？", a: "C", o: ["GPU", "大模型", "有标签的数据", "Prompt", "API Key"] },
+        { q: "过拟合（Overfitting）最准确的描述是？", a: "C", o: ["模型太小", "模型训练太慢", "模型记住训练集但泛化差", "数据太少", "学习率太低"] },
+        { q: "下列哪项通常不用于模型评估？", a: "E", o: ["Accuracy", "Precision", "Recall", "Loss", "Epoch"] },
+        { q: "Transformer 架构的核心创新是？", a: "C", o: ["卷积", "循环", "注意力机制", "树结构", "强化学习"] },
+        { q: "Prompt Engineering 的本质是？", a: "C", o: ["写代码", "调模型参数", "与模型对齐输入分布", "提高算力", "替代训练"] },
+        { q: "向量数据库主要用于？", a: "C", o: ["存图片", "存日志", "相似度检索", "事务处理", "用户管理"] },
+        { q: "RAG 架构中，LLM 的主要角色是？", a: "C", o: ["存储知识", "检索向量", "生成与整合答案", "标注数据", "训练模型"] },
+        { q: "下列哪种情况最容易产生数据泄漏（Data Leakage）？", a: "B", o: ["数据太少", "测试集参与特征构建", "模型太复杂", "算力不足", "标签不平衡"] },
+        { q: "微调（Fine-tuning）与预训练的核心区别是？", a: "C", o: ["是否用 GPU", "是否用大数据", "是否在已有参数基础上训练", "是否监督学习", "是否用 Transformer"] },
+        { q: "多模态模型的“多模态”指的是？", a: "C", o: ["多模型", "多任务", "多种数据形式", "多语言", "多用户"] },
+        { q: "强化学习中，Agent 的目标是？", a: "B", o: ["拟合数据", "最大化长期回报", "最小化 Loss", "预测标签", "生成文本"] },
+        { q: "为什么大模型推理成本高？", a: "B", o: ["数据太多", "参数量巨大", "网络慢", "代码复杂", "Prompt 太长"] },
+        { q: "下列哪项不是常见的模型压缩手段？", a: "D", o: ["量化", "剪枝", "蒸馏", "过拟合", "低秩分解"] },
+        { q: "“Embedding”最准确的描述是？", a: "B", o: ["压缩文件", "向量化表示语义", "模型训练", "特征选择", "数据清洗"] },
+        { q: "LLM 幻觉（Hallucination）主要源于？", a: "C", o: ["算力不足", "参数太少", "生成式概率机制", "Prompt 写错", "数据太干净"] },
+        // Part C: 26-52
+        { q: "为什么线上系统通常将训练与推理解耦？", a: "C", o: ["为了省钱", "为了代码好看", "资源与稳定性需求不同", "不能同时运行", "习惯如此"] },
+        { q: "在 AI 产品中，MVP 的核心目标是？", a: "C", o: ["技术最先进", "覆盖所有场景", "验证关键假设", "成本最低", "UI 最好"] },
+        { q: "模型效果提升 1%，但成本翻倍，你更应该关注？", a: "C", o: ["技术成就", "Benchmark", "ROI 与业务价值", "模型结构", "是否 SOTA"] },
+        { q: "AI 系统中最容易被低估的风险是？", a: "B", o: ["算力", "数据分布漂移", "模型不收敛", "API 限流", "代码 Bug"] },
+        { q: "为什么“可解释性”在部分行业至关重要？", a: "B", o: ["用户好奇", "监管与责任追溯", "提高精度", "降低算力", "方便训练"] },
+        { q: "下列哪种角色更偏“AI 架构师”？", a: "C", o: ["写 Prompt 的人", "只训练模型的人", "设计端到端系统的人", "标注数据的人", "调参工程师"] },
+        { q: "为什么说“大模型 ≠ AI 产品”？", a: "C", o: ["模型不好", "模型太贵", "产品还需要数据、系统与场景", "模型太难用", "模型不稳定"] },
+        { q: "在企业内部推 AI，最大阻力通常来自？", a: "C", o: ["技术", "算力", "组织与流程", "数据", "法律"] },
+        { q: "“模型即商品化”最可能带来的结果是？", a: "C", o: ["AI 变慢", "算力免费", "差异转向系统与场景", "技术停滞", "数据消失"] },
+        { q: "你如何判断一个 AI 项目是否“过度工程”？", a: "C", o: ["代码多", "技术新", "超出真实需求", "用了深度学习", "有论文"] },
+        { q: "为什么很多 AI 项目最终失败？", a: "C", o: ["模型不够大", "技术选型错误", "问题本身不值得解决", "算力不足", "人才不行"] },
+        { q: "下列哪项最接近“AI 思维方式”？", a: "C", o: ["追求准确答案", "追求确定性", "用概率和分布看问题", "完全自动化", "模仿人类"] },
+        { q: "当你不知道模型为什么有效时，最危险的是？", a: "C", o: ["无法优化", "无法复现", "无法在新场景稳定工作", "无法写论文", "无法展示"] },
+        { q: "为什么说 Prompt 是“临时杠杆”而非长期护城河？", a: "C", o: ["写起来简单", "容易被复制", "模型能力会吸收它", "效果不稳定", "不够工程化"] },
+        { q: "真正有壁垒的 AI 能力通常来自？", a: "C", o: ["模型参数", "Prompt", "独特数据与场景", "GPU 数量", "开源框架"] },
+        { q: "AI 发展中最可能被高估的是？", a: "B", o: ["算力", "短期自动化程度", "长期影响", "数据重要性", "系统复杂度"] },
+        { q: "下列哪种能力最难被大模型直接取代？", a: "C", o: ["写代码", "写文案", "系统设计与问题定义", "翻译", "总结"] },
+        { q: "一个 AI 人才的长期价值主要取决于？", a: "C", o: ["会多少框架", "跑过多少模型", "抽象与迁移能力", "算力资源", "学历"] },
+        { q: "为什么说“AI 是放大器”？", a: "C", o: ["让人更快", "让系统更复杂", "放大原有认知与结构", "放大算力", "放大风险"] },
+        { q: "下列哪种判断更接近 Lv6–Lv7 水平？", a: "C", o: ["“这个模型很强”", "“这个参数很大”", "“系统在当前约束下是最优解”", "“这个论文很新”", "“这个效果不错”"] },
+        { q: "当模型效果不稳定时，优先排查？", a: "C", o: ["算法", "代码", "数据分布", "GPU", "Prompt"] },
+        { q: "AI 项目中“最贵的成本”往往是？", a: "C", o: ["算力", "人力", "试错时间", "数据", "云服务"] },
+        { q: "真正的 AI 规模化挑战在于？", a: "C", o: ["训练", "推理", "运维、监控与治理", "模型结构", "编程语言"] },
+        { q: "Lv7 视角下，“模型能力提升”意味着？", a: "C", o: ["参数更多", "准确率更高", "抽象层级上移", "推理更快", "成本更低"] },
+        { q: "下列哪句话最像“范式级理解”？", a: "B", o: ["“这个模型好用”", "“这个方法能复用到其他领域”", "“这个代码很优雅”", "“这个效果最好”", "“这个很流行”"] },
+        { q: "如果 AI 彻底商品化，人类优势将集中在？", a: "C", o: ["记忆", "速度", "判断与价值选择", "计算", "模仿"] },
+        { q: "对 AI 保持长期竞争力，最重要的是？", a: "C", o: ["跟进工具", "跟进模型", "进化认知结构", "买算力", "写 Prompt"] }
+    ];
+
+    const levels = [
+        { lv: 1, name: "数码原住民", desc: "你如数字洪流中的原生细胞，萌系天真。好奇心重，能迅速看到新事物的可能性。适应力极强，是想法的催化剂。" },
+        { lv: 2, name: "工具驾驭者", desc: "寻求事物的合理合理解释，热衷于思考。在感兴趣的领域有超凡的专注力，能深度解决问题，灵活且适应性强。" },
+        { lv: 3, name: "逻辑拆解者", desc: "对价值观忠诚，希望内外统一。寻求理解他人并帮助实现潜能。适应力强，除非触及核心原则，否则非常灵活。" },
+        { lv: 4, name: "系统理解者", desc: "俯瞰全景，不仅看单一算法，更看数据闭环。你是构建稳健系统的中坚力量，具备全局观与关联思维。" },
+        { lv: 5, name: "模型操作者", desc: "在效果与成本的钢索上稳健平衡。多疑且挑剔，热衷于在概率中寻找确定性，是实战派的调优专家。" },
+        { lv: 6, name: "架构设计者", desc: "数字帝国的筑梦师，设计完整的演进蓝图。深谙组织协作与工程约束，你的设计塑造未来的智能生态。" },
+        { lv: 7, name: "范式创造者", desc: "质疑既有范式，提出全新路径。你是数字纪元的先知，AI的未来因你的新抽象而革新，追求真理而非流行。" }
+    ];
+
+    let currentIdx = 0;
+    let totalScore = 0;
+    let partCCount = 0;
+
+    const mount = document.getElementById('game-mount');
+
+    function renderStart() {
+        mount.innerHTML = `
+            <div class="fade-in">
+                <h1 style="font-size: 2rem; margin-bottom: 1rem;">AI 认知进化测试</h1>
+                <p style="color: var(--text-sub); line-height: 1.6;">52个维度深度剖析，探测你的AI认知边界。<br>本测试包含权重逻辑与范式门槛校验。</p>
+                <button class="btn-primary" onclick="nextQuestion()">开始进化之旅</button>
+            </div>
+        `;
+    }
+
+    function nextQuestion() {
+        if (currentIdx >= questions.length) {
+            showResult();
+            return;
+        }
+
+        const q = questions[currentIdx];
+        const html = `
+            <div class="fade-in">
+                <div class="progress-bar-wrap"><div id="progress-fill" style="width: ${(currentIdx/52)*100}%"></div></div>
+                <p style="color: var(--accent-color); font-weight: bold; font-size: 0.8rem; margin-bottom: 0.5rem;">
+                    QUESTION ${currentIdx + 1}
+                </p>
+                <h3 style="margin-top: 0; line-height: 1.5; font-size: 1.1rem;">${q.q}</h3>
+                <div class="options">
+                    ${q.o.map((opt, i) => `
+                        <button class="option-btn" onclick="handleSelect('${String.fromCharCode(65+i)}')">
+                            ${String.fromCharCode(65+i)}. ${opt}
+                        </button>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+
+        mount.classList.add('fade-out');
+        setTimeout(() => {
+            mount.innerHTML = html;
+            mount.classList.remove('fade-out');
+        }, 300);
+    }
+
+    function handleSelect(choice) {
+        const q = questions[currentIdx];
+        let weight = currentIdx < 10 ? 1 : (currentIdx < 25 ? 2 : (currentIdx < 40 ? 3 : 4));
+        if (choice === q.a) {
+            totalScore += weight;
+            if (currentIdx >= 40) partCCount++;
+        }
+        currentIdx++;
+        nextQuestion();
+    }
+
+    function showResult() {
+        let lvIdx = 0;
+        if(totalScore >= 121) lvIdx = 6;
+        else if(totalScore >= 106) lvIdx = 5;
+        else if(totalScore >= 86) lvIdx = 4;
+        else if(totalScore >= 66) lvIdx = 3;
+        else if(totalScore >= 46) lvIdx = 2;
+        else if(totalScore >= 26) lvIdx = 1;
+
+        if (partCCount < 3 && lvIdx > 4) lvIdx = 4; // 门槛校验
+
+        const result = levels[lvIdx];
+        const botImgSrc = `images/lv${lvIdx + 1}.png`;
+
+        mount.innerHTML = `
+            <div class="fade-in result-container">
+                <p style="color:var(--text-sub); margin-bottom:0;">评估结果</p>
+                <div class="lv-badge">Lv${result.lv}</div>
+                <div style="font-size: 1.5rem; font-weight: bold; margin-bottom: 1rem;">${result.name}</div>
+                <img src="${botImgSrc}" class="bot-img" onerror="this.src='https://via.placeholder.com/220/1e2127/8b5cf6?text=Robot+Ready'">
+                <div class="lv-desc">${result.desc}</div>
+                <button class="btn-primary" onclick="downloadCard(${result.lv}, '${result.name}', '${botImgSrc}')">生成分享证书</button>
+                <button class="btn-primary" style="background: #334155;" onclick="location.reload()">重新测试</button>
+            </div>
+        `;
+    }
+
+    function downloadCard(lv, name, imgSrc) {
+        const canvas = document.getElementById('shareCanvas');
+        const ctx = canvas.getContext('2d');
+        const img = new Image();
+        img.src = imgSrc;
+        
+        img.onload = function() {
+            ctx.fillStyle = '#0f1013';
+            ctx.fillRect(0, 0, 600, 1000);
+            ctx.strokeStyle = '#8b5cf6';
+            ctx.lineWidth = 4;
+            ctx.strokeRect(20, 20, 560, 960);
+
+            ctx.drawImage(img, 150, 480, 300, 300);
+
+            ctx.fillStyle = '#8b5cf6';
+            ctx.font = 'bold 36px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('AI 进化等级证书', 300, 120);
+
+            ctx.fillStyle = '#fff';
+            ctx.font = '900 150px sans-serif';
+            ctx.fillText('Lv' + lv, 300, 320);
+
+            ctx.font = 'bold 50px sans-serif';
+            ctx.fillText(name, 300, 420);
+
+            ctx.fillStyle = '#94a3b8';
+            ctx.font = '24px sans-serif';
+            ctx.fillText('Cognitive Score: ' + totalScore, 300, 850);
+            ctx.fillText('进化从未停止 • EXPLORE AI', 300, 910);
+
+            const link = document.createElement('a');
+            link.download = `AI-Level-Lv${lv}.png`;
+            link.href = canvas.toDataURL("image/png");
+            link.click();
+        };
+        // 处理图片加载失败（防止卡死）
+        img.onerror = function() { alert("证书生成失败：请检查 images 文件夹中是否有 lv1.png 等图片。"); };
+    }
+
+    renderStart();
+</script>
+</body>
+</html>
